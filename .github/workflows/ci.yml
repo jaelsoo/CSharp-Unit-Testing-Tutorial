@@ -1,0 +1,60 @@
+# =====================================================================
+# Pipeline de Integração Contínua (CI) - Integração DevOps
+# Curso: Ciência da Computação
+# Professor: Daniel Linhares Lim Apo
+# Tecnologia: .NET 9.0 + xUnit + Moq + FluentAssertions
+# =====================================================================
+
+name: Pipeline de Integracao Continua (CI)
+
+# 1. GATILHOS DE DISPARO (TRIGGERS): Define quando o pipeline deve rodar automaticamente
+on:
+  push:
+    branches: [ "main" ] # Dispara ao enviar novos commits para a branch principal
+  pull_request:
+    branches: [ "main" ] # Dispara quando um Pull Request é aberto ou atualizado com destino à main
+
+# 2. AMBIENTE DE EXECUÇÃO: Onde as tarefas (jobs) serão processadas
+jobs:
+  build-and-test:
+    name: Compilar e Testar (.NET 9)
+    runs-on: ubuntu-latest # Utiliza um runner hospedado no GitHub com Linux atualizado
+
+    steps:
+    # Passo 1: Baixa o código-fonte do repositório para o disco do runner
+    - name: Checkout do Codigo-Fonte
+      uses: actions/checkout@v4
+
+    # Passo 2: Instala e configura o SDK oficial do .NET 9 no runner
+    - name: Configurar SDK do .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x' # Garante o uso do SDK correto correspondente ao projeto
+
+    # Passo 3: Restaura os pacotes NuGet declarados nas dependências do projeto
+    - name: Restaurar Pacotes (NuGet Restore)
+      run: dotnet restore src/UnitTestingTutorial.slnx
+
+    # Passo 4: Realiza a compilação estática do código (Build)
+    # O parâmetro --no-restore evita restaurar pacotes novamente, acelerando a execução
+    - name: Compilar Solucao (Build)
+      run: dotnet build src/UnitTestingTutorial.slnx --configuration Release --no-restore
+
+    # Passo 5: Executa todos os 172 testes automatizados usando o runner do xUnit
+    # Coleta a cobertura de código no formato XML (Cobertura) para análise complementar
+    - name: Executar Testes Automatizados (dotnet test)
+      run: |
+        dotnet test src/UnitTestingTutorial.slnx \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage"
+
+    # Passo 6 (Opcional - Desafio Técnico): Publica a cobertura de código gerada como um artefato de build
+    # Permite baixar o arquivo XML de cobertura gerado mesmo que alguns testes falhem
+    - name: Publicar Evidencias de Cobertura
+      uses: actions/upload-artifact@v4
+      with:
+        name: cobertura-cobertura-xml
+        path: "**/TestResults/**/coverage.cobertura.xml"
+        if-no-files-found: warn
